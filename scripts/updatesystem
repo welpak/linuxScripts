@@ -66,6 +66,10 @@ spinner_index=0
 FIXES_APPLIED=0
 ISSUES_FOUND=0
 BYTES_FREED=0
+ISSUES_LIST=()
+
+# Progress bar positioning
+PROGRESS_LINE=0
 
 # --- Utility Functions ---
 print_header() {
@@ -110,6 +114,13 @@ log_fix() {
     ((FIXES_APPLIED++))
 }
 
+log_issue() {
+    local issue_description="$1"
+    echo -e "    ${ICON_WARNING} ${WARNING}$issue_description${RESET}"
+    ISSUES_LIST+=("$issue_description")
+    ((ISSUES_FOUND++))
+}
+
 display_progress() {
     local percent=$1
     local task_message="$2"
@@ -135,17 +146,36 @@ display_progress() {
     spinner_index=$(( (spinner_index + 1) % ${#spinner_chars[@]} ))
     local current_spinner="${spinner_chars[$spinner_index]}"
 
-    if [ -n "$CURRENT_TASK_MESSAGE" ] || [ "$SCRIPT_PROGRESS_PERCENT" -ne 0 ] || [ "$percent" -ne 0 ]; then
-        printf "\033[4A"
+    # If this is the first call, determine where to draw the progress bar
+    if [ "$PROGRESS_LINE" -eq 0 ]; then
+        PROGRESS_LINE=$(tput lines 2>/dev/null || echo 24)
+        PROGRESS_LINE=$((PROGRESS_LINE - 20))  # Position near top but below header
+        if [ "$PROGRESS_LINE" -lt 2 ]; then
+            PROGRESS_LINE=2
+        fi
+        echo ""  # Add spacing after header
+        echo ""
+        echo ""
+        echo ""
     fi
 
+    # Save cursor position, draw progress bar at fixed location, restore cursor
+    tput sc 2>/dev/null || true  # Save cursor position
+
+    # Move to progress bar line
+    tput cup $PROGRESS_LINE 0 2>/dev/null || printf "\033[${PROGRESS_LINE};0H"
+
+    # Draw the progress bar
     echo -e "${TEXT_DIM}┌────────────────────────────────────────────────────────────────────────┐${RESET}"
     printf "${TEXT_DIM}│${RESET} ${GRAD_2}${BOLD}Progress:${RESET} ${NEON_CYAN}%s${TEXT_SHADOW}%s${RESET} ${NEON_PURPLE}%3d%%${RESET} ${TEXT_DIM}│${RESET}\n" \
         "$filled_chars" "$empty_chars" "$percent"
     printf "${TEXT_DIM}│${RESET} ${current_spinner} ${TEXT_NORMAL}%-64s${TEXT_DIM} │${RESET}\n" "$task_message"
     echo -e "${TEXT_DIM}└────────────────────────────────────────────────────────────────────────┘${RESET}"
 
+    tput rc 2>/dev/null || true  # Restore cursor position
+
     SCRIPT_PROGRESS_PERCENT=$percent
+    CURRENT_TASK_MESSAGE="$task_message"
 }
 
 animate_progress_bar() {
@@ -613,8 +643,7 @@ section_hardware_checks() {
             if echo "$smart_output" | grep -qi "PASSED"; then
                 log_success "$(basename $disk): SMART PASSED"
             elif echo "$smart_output" | grep -qi "FAILED"; then
-                log_error "$(basename $disk): SMART FAILED - Check disk!"
-                ((ISSUES_FOUND++))
+                log_issue "Disk $(basename $disk) SMART test FAILED - Replace disk immediately!"
             fi
         done
     fi
@@ -626,8 +655,10 @@ section_hardware_checks() {
         fw_updates=$(sudo fwupdmgr get-updates 2>&1)
 
         if ! echo "$fw_updates" | grep -qi "No upgrades"; then
-            log_warning "Firmware updates available"
-            ((ISSUES_FOUND++))
+            update_count=$(echo "$fw_updates" | grep -c "Update" || echo "0")
+            if [ "$update_count" -gt 0 ]; then
+                log_issue "Firmware updates available ($update_count device(s)) - Run: sudo fwupdmgr update"
+            fi
         fi
     fi
 }
@@ -648,8 +679,7 @@ section_network_optimization() {
     # Check firewall status
     if command_exists ufw; then
         if ! sudo ufw status | grep -q "Status: active"; then
-            log_warning "Firewall (UFW) is inactive"
-            ((ISSUES_FOUND++))
+            log_issue "Firewall (UFW) is inactive - Enable for better security"
         else
             log_success "Firewall active"
         fi
@@ -680,7 +710,11 @@ generate_final_report() {
 
     if [ "$ISSUES_FOUND" -gt 0 ]; then
         echo -e "  ${WARNING}${BOLD}⚠ ATTENTION REQUIRED${RESET}"
-        echo -e "    ${TEXT_DIM}Some issues require manual intervention${RESET}"
+        echo -e "    ${TEXT_DIM}The following issues require manual intervention:${RESET}"
+        echo ""
+        for issue in "${ISSUES_LIST[@]}"; do
+            echo -e "    ${ICON_WARNING} ${WARNING}$issue${RESET}"
+        done
         echo ""
     fi
 
