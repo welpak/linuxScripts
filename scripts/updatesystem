@@ -146,33 +146,36 @@ display_progress() {
     spinner_index=$(( (spinner_index + 1) % ${#spinner_chars[@]} ))
     local current_spinner="${spinner_chars[$spinner_index]}"
 
-    # If this is the first call, determine where to draw the progress bar
+    # Progress bar starts right after the header (line 12)
+    # Header is 11 lines tall
     if [ "$PROGRESS_LINE" -eq 0 ]; then
-        PROGRESS_LINE=$(tput lines 2>/dev/null || echo 24)
-        PROGRESS_LINE=$((PROGRESS_LINE - 20))  # Position near top but below header
-        if [ "$PROGRESS_LINE" -lt 2 ]; then
-            PROGRESS_LINE=2
-        fi
-        echo ""  # Add spacing after header
+        PROGRESS_LINE=12
+        # On first call, print empty lines to reserve space for logs below
+        echo ""
         echo ""
         echo ""
         echo ""
     fi
 
-    # Save cursor position, draw progress bar at fixed location, restore cursor
-    tput sc 2>/dev/null || true  # Save cursor position
+    # Save current cursor position
+    tput sc 2>/dev/null || true
 
-    # Move to progress bar line
+    # Move to progress bar position (right under header)
     tput cup $PROGRESS_LINE 0 2>/dev/null || printf "\033[${PROGRESS_LINE};0H"
 
-    # Draw the progress bar
+    # Clear the 4 lines for progress bar and redraw
+    printf "\033[K"  # Clear line
     echo -e "${TEXT_DIM}┌────────────────────────────────────────────────────────────────────────┐${RESET}"
+    printf "\033[K"  # Clear line
     printf "${TEXT_DIM}│${RESET} ${GRAD_2}${BOLD}Progress:${RESET} ${NEON_CYAN}%s${TEXT_SHADOW}%s${RESET} ${NEON_PURPLE}%3d%%${RESET} ${TEXT_DIM}│${RESET}\n" \
         "$filled_chars" "$empty_chars" "$percent"
+    printf "\033[K"  # Clear line
     printf "${TEXT_DIM}│${RESET} ${current_spinner} ${TEXT_NORMAL}%-64s${TEXT_DIM} │${RESET}\n" "$task_message"
+    printf "\033[K"  # Clear line
     echo -e "${TEXT_DIM}└────────────────────────────────────────────────────────────────────────┘${RESET}"
 
-    tput rc 2>/dev/null || true  # Restore cursor position
+    # Restore cursor position (for logs to continue below)
+    tput rc 2>/dev/null || true
 
     SCRIPT_PROGRESS_PERCENT=$percent
     CURRENT_TASK_MESSAGE="$task_message"
