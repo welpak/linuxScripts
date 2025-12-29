@@ -653,15 +653,42 @@ section_hardware_checks() {
 
     # Firmware updates
     if command_exists fwupdmgr; then
-        log_detail "Checking firmware updates..."
-        sudo fwupdmgr refresh --force &>/dev/null
-        fw_updates=$(sudo fwupdmgr get-updates 2>&1)
+        log_detail "Checking and applying firmware updates..."
 
-        if ! echo "$fw_updates" | grep -qi "No upgrades"; then
-            update_count=$(echo "$fw_updates" | grep -c "Update" || echo "0")
-            if [ "$update_count" -gt 0 ]; then
-                log_issue "Firmware updates available ($update_count device(s)) - Run: sudo fwupdmgr update"
+        # Refresh metadata
+        sudo fwupdmgr refresh --force &>/dev/null 2>&1
+
+        # Try to apply updates automatically
+        fw_update_output=$(sudo fwupdmgr update -y 2>&1)
+
+        # Check what happened
+        if echo "$fw_update_output" | grep -qi "Successfully installed firmware"; then
+            # Updates were applied
+            installed_count=$(echo "$fw_update_output" | grep -c "Successfully installed" || echo "0")
+            log_fix "Applied firmware updates to $installed_count device(s) - Reboot recommended"
+            log_warning "Please reboot your system to complete firmware updates"
+
+        elif echo "$fw_update_output" | grep -qi "Devices with firmware updates that need user action"; then
+            # Some updates need user action
+            user_action_devices=$(echo "$fw_update_output" | awk '/Devices with firmware updates that need user action:/,/^$/' | grep "^[[:space:]]*•" | sed 's/^[[:space:]]*• //' | head -5)
+            action_needed=$(echo "$fw_update_output" | grep "‣" | sed 's/^[[:space:]]*‣ //' | head -1)
+
+            if [ -n "$user_action_devices" ]; then
+                device_name=$(echo "$user_action_devices" | head -1)
+                if [ -n "$action_needed" ]; then
+                    log_issue "Firmware update blocked: $device_name - Action: $action_needed"
+                else
+                    log_issue "Firmware update needs user action for: $device_name"
+                fi
             fi
+
+        elif echo "$fw_update_output" | grep -qi "Devices with the latest available firmware"; then
+            # All firmware up to date
+            log_success "All device firmware up-to-date"
+
+        elif echo "$fw_update_output" | grep -qi "No updates available"; then
+            # No updates
+            log_success "No firmware updates available"
         fi
     fi
 }
