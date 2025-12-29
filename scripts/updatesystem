@@ -1,211 +1,366 @@
 #!/bin/bash
 
-# --- Configuration: Empire & Minimalist Tech Theme (Revised) ---
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTEM MAINTENANCE & OPTIMIZATION TOOL - FUTURISTIC EDITION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# --- Futuristic Color Scheme ---
 BOLD=$'\033[1m'
+DIM=$'\033[2m'
 RESET=$'\033[0m'
-PROG_ACCENT_BLUE=$'\033[38;5;39m'
-PROG_BAR_FG="${PROG_ACCENT_BLUE}"
-PROG_BAR_SHADOW_FG=$'\033[38;5;239m'
-PROG_TEXT_COLOR=$'\033[38;5;252m'
-EMP_WHITE_TITLE=$'\033[38;5;255m'
-EMP_BLUE_HEADER=$'\033[38;5;33m'
-EMP_GREY_TEXT=$'\033[38;5;248m'
-EMP_DARK_GREY_DIVIDER=$'\033[38;5;238m'
-EMP_WHITE_TEXT=$'\033[38;5;255m'
-EMP_GREEN_SUCCESS=$'\033[38;5;77m'
-EMP_YELLOW_WARN=$'\033[38;5;220m'
-EMP_RED_ERROR=$'\033[38;5;160m'
-EMP_BLUE_INFO="${EMP_BLUE_HEADER}"
-EMP_CYAN_ACTION=$'\033[38;5;51m'
-CHECKMARK="${EMP_GREEN_SUCCESS}✓${RESET}"
-CROSS="${EMP_RED_ERROR}✗${RESET}"
-INFO="${EMP_BLUE_INFO}ⓘ${RESET}"
-WARN="${EMP_YELLOW_WARN}⚠${RESET}"
-ARROW="${EMP_CYAN_ACTION}→${RESET}"
+UNDERLINE=$'\033[4m'
+
+# Neon/Cyberpunk palette
+NEON_BLUE=$'\033[38;5;39m'
+NEON_CYAN=$'\033[38;5;51m'
+NEON_PURPLE=$'\033[38;5;141m'
+NEON_PINK=$'\033[38;5;200m'
+NEON_GREEN=$'\033[38;5;46m'
+NEON_YELLOW=$'\033[38;5;226m'
+NEON_ORANGE=$'\033[38;5;208m'
+NEON_RED=$'\033[38;5;196m'
+
+# Gradient colors
+GRAD_1=$'\033[38;5;33m'   # Deep blue
+GRAD_2=$'\033[38;5;39m'   # Medium blue
+GRAD_3=$'\033[38;5;45m'   # Cyan blue
+GRAD_4=$'\033[38;5;51m'   # Bright cyan
+
+# Text colors
+TEXT_BRIGHT=$'\033[38;5;255m'
+TEXT_NORMAL=$'\033[38;5;252m'
+TEXT_DIM=$'\033[38;5;245m'
+TEXT_SHADOW=$'\033[38;5;236m'
+
+# Status colors
+SUCCESS=$'\033[38;5;46m'
+WARNING=$'\033[38;5;226m'
+ERROR=$'\033[38;5;196m'
+INFO=$'\033[38;5;51m'
+
+# Status icons
+ICON_SUCCESS="${SUCCESS}●${RESET}"
+ICON_ERROR="${ERROR}●${RESET}"
+ICON_WARNING="${WARNING}●${RESET}"
+ICON_INFO="${INFO}●${RESET}"
+ICON_ROCKET="${NEON_CYAN}❯${RESET}"
+ICON_GEAR="${NEON_PURPLE}⚙${RESET}"
+ICON_CHECK="${SUCCESS}✓${RESET}"
+ICON_CROSS="${ERROR}✗${RESET}"
+ICON_WRENCH="${NEON_ORANGE}🔧${RESET}"
+ICON_CLEAN="${NEON_GREEN}◉${RESET}"
+ICON_ARROW="${NEON_CYAN}▶${RESET}"
 
 # --- Global Variables ---
 CURRENT_TASK_MESSAGE=""
 SCRIPT_COMPLETED_SUCCESSFULLY=false
 SCRIPT_PROGRESS_PERCENT=0
-SKIP_INTERACTIVE_ACTIONS=false # Default to interactive mode
+SKIP_INTERACTIVE_ACTIONS=false
+AUTOFIX_ENABLED=true
 
-declare -A R_SYSTEM; declare -A R_APT; declare -A R_SNAP; declare -A R_FLATPAK
-declare -A R_DRIVES; declare -A R_HARDWARE; declare -A R_OPTIMIZATIONS; declare -A R_HEALTH
-spinner_chars=("|" "/" "-" "\\"); spinner_index=0
+declare -A R_SYSTEM R_APT R_SNAP R_FLATPAK R_DRIVES R_HARDWARE R_OPTIMIZATIONS R_HEALTH R_FIXES R_CLEANUP
+spinner_chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+spinner_index=0
+
+# Fix tracking
+FIXES_APPLIED=0
+ISSUES_FOUND=0
+BYTES_FREED=0
 
 # --- Utility Functions ---
+print_header() {
+    clear
+    echo -e "${GRAD_1}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${GRAD_2}║${TEXT_BRIGHT}                                                                           ${GRAD_2}║${RESET}"
+    echo -e "${GRAD_2}║${TEXT_BRIGHT}        ███████╗██╗   ██╗███████╗████████╗███████╗███╗   ███╗           ${GRAD_2}║${RESET}"
+    echo -e "${GRAD_3}║${TEXT_BRIGHT}        ██╔════╝╚██╗ ██╔╝██╔════╝╚══██╔══╝██╔════╝████╗ ████║           ${GRAD_3}║${RESET}"
+    echo -e "${GRAD_3}║${NEON_CYAN}        ███████╗ ╚████╔╝ ███████╗   ██║   █████╗  ██╔████╔██║           ${GRAD_3}║${RESET}"
+    echo -e "${GRAD_4}║${NEON_CYAN}        ╚════██║  ╚██╔╝  ╚════██║   ██║   ██╔══╝  ██║╚██╔╝██║           ${GRAD_4}║${RESET}"
+    echo -e "${GRAD_4}║${NEON_BLUE}        ███████║   ██║   ███████║   ██║   ███████╗██║ ╚═╝ ██║           ${GRAD_4}║${RESET}"
+    echo -e "${GRAD_4}║${NEON_BLUE}        ╚══════╝   ╚═╝   ╚══════╝   ╚═╝   ╚══════╝╚═╝     ╚═╝           ${GRAD_4}║${RESET}"
+    echo -e "${GRAD_3}║${TEXT_BRIGHT}                                                                           ${GRAD_3}║${RESET}"
+    echo -e "${GRAD_2}║${NEON_PURPLE}          M A I N T E N A N C E   &   O P T I M I Z A T I O N             ${GRAD_2}║${RESET}"
+    echo -e "${GRAD_1}║${TEXT_DIM}                         v2.0 Futuristic Edition                          ${GRAD_1}║${RESET}"
+    echo -e "${GRAD_1}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+}
+
 log_action() {
-    echo -e "  ${ARROW} ${EMP_CYAN_ACTION}$1${RESET}"
+    echo -e "  ${ICON_ROCKET} ${NEON_CYAN}${BOLD}$1${RESET}"
 }
 
 log_detail() {
-    echo -e "    ${EMP_GREY_TEXT}$1${RESET}"
+    echo -e "    ${TEXT_DIM}├─ $1${RESET}"
+}
+
+log_success() {
+    echo -e "    ${ICON_CHECK} ${SUCCESS}$1${RESET}"
+}
+
+log_warning() {
+    echo -e "    ${ICON_WARNING} ${WARNING}$1${RESET}"
+}
+
+log_error() {
+    echo -e "    ${ICON_CROSS} ${ERROR}$1${RESET}"
+}
+
+log_fix() {
+    echo -e "    ${ICON_WRENCH} ${NEON_ORANGE}$1${RESET}"
+    ((FIXES_APPLIED++))
 }
 
 display_progress() {
-    local percent=$1; local task_message="$2"; local bar_length=40
-    local num_filled_main=$(( percent * bar_length / 100 ))
-    if [ "$percent" -ge 100 ]; then num_filled_main=$bar_length; fi # Ensure 100% is full
-    local num_empty_main=$(( bar_length - num_filled_main ))
-    [[ $num_filled_main -lt 0 ]] && num_filled_main=0; [[ $num_empty_main -lt 0 ]] && num_empty_main=0
-    local filled_main_chars=""; if [ "$num_filled_main" -gt 0 ]; then filled_main_chars=$(printf "%0.s█" $(seq 1 $num_filled_main 2>/dev/null || true)); fi
-    local empty_main_chars=""; if [ "$num_empty_main" -gt 0 ]; then empty_main_chars=$(printf "%0.s─" $(seq 1 $num_empty_main 2>/dev/null || true)); fi
-    local shadow_bar_chars=$(printf "%0.s░" $(seq 1 $bar_length 2>/dev/null || true))
-    spinner_index=$(( (spinner_index + 1) % ${#spinner_chars[@]} )); local current_spinner="${spinner_chars[$spinner_index]}"
-    if [ -n "$CURRENT_TASK_MESSAGE" ] || [ "$SCRIPT_PROGRESS_PERCENT" -ne 0 ] || [ "$percent" -ne 0 ]; then printf "\033[3A"; fi # Adjust condition for first draw at 0%
-    printf "\r\033[K${PROG_ACCENT_BLUE}${BOLD}> Progress: ${PROG_BAR_FG}%s${PROG_BAR_SHADOW_FG}%s ${PROG_ACCENT_BLUE}%3d%%%s${RESET}\n" \
-        "$filled_main_chars" "$empty_main_chars" "$percent" ""
-    printf "\r\033[K  ${PROG_BAR_SHADOW_FG}%s${RESET}\n" "$shadow_bar_chars"
-    printf "\r\033[K  ${PROG_TEXT_COLOR}↳ Working on: %s... ${PROG_ACCENT_BLUE}%s${RESET}\n" \
-        "$task_message" "$current_spinner"; SCRIPT_PROGRESS_PERCENT=$percent
+    local percent=$1
+    local task_message="$2"
+    local bar_length=50
+
+    local num_filled=$(( percent * bar_length / 100 ))
+    if [ "$percent" -ge 100 ]; then num_filled=$bar_length; fi
+    local num_empty=$(( bar_length - num_filled ))
+    [[ $num_filled -lt 0 ]] && num_filled=0
+    [[ $num_empty -lt 0 ]] && num_empty=0
+
+    # Create gradient bar
+    local filled_chars=""
+    if [ "$num_filled" -gt 0 ]; then
+        filled_chars=$(printf "%0.s█" $(seq 1 $num_filled 2>/dev/null || true))
+    fi
+
+    local empty_chars=""
+    if [ "$num_empty" -gt 0 ]; then
+        empty_chars=$(printf "%0.s░" $(seq 1 $num_empty 2>/dev/null || true))
+    fi
+
+    spinner_index=$(( (spinner_index + 1) % ${#spinner_chars[@]} ))
+    local current_spinner="${spinner_chars[$spinner_index]}"
+
+    if [ -n "$CURRENT_TASK_MESSAGE" ] || [ "$SCRIPT_PROGRESS_PERCENT" -ne 0 ] || [ "$percent" -ne 0 ]; then
+        printf "\033[4A"
+    fi
+
+    echo -e "${TEXT_DIM}┌────────────────────────────────────────────────────────────────────────┐${RESET}"
+    printf "${TEXT_DIM}│${RESET} ${GRAD_2}${BOLD}Progress:${RESET} ${NEON_CYAN}%s${TEXT_SHADOW}%s${RESET} ${NEON_PURPLE}%3d%%${RESET} ${TEXT_DIM}│${RESET}\n" \
+        "$filled_chars" "$empty_chars" "$percent"
+    printf "${TEXT_DIM}│${RESET} ${current_spinner} ${TEXT_NORMAL}%-64s${TEXT_DIM} │${RESET}\n" "$task_message"
+    echo -e "${TEXT_DIM}└────────────────────────────────────────────────────────────────────────┘${RESET}"
+
+    SCRIPT_PROGRESS_PERCENT=$percent
 }
 
 animate_progress_bar() {
-    local target_percentage=$1; local start_percentage=$SCRIPT_PROGRESS_PERCENT
-    # Only animate if not in --skip mode to make it faster
+    local target_percentage=$1
+    local start_percentage=$SCRIPT_PROGRESS_PERCENT
+
     if [ "$target_percentage" -gt "$start_percentage" ] && [ "$SKIP_INTERACTIVE_ACTIONS" = false ]; then
-        for ((p = start_percentage + 1; p < target_percentage; p++)); do display_progress "$p" "$CURRENT_TASK_MESSAGE"; sleep 0.03; done
+        for ((p = start_percentage + 1; p < target_percentage; p++)); do
+            display_progress "$p" "$CURRENT_TASK_MESSAGE"
+            sleep 0.02
+        done
     fi
 }
 
-cleanup_on_exit() { tput cnorm 2>/dev/null || true; if [ "$SCRIPT_COMPLETED_SUCCESSFULLY" = "false" ]; then echo -e "\n${EMP_RED_ERROR:-$'\033[0;31m'}${BOLD}Script exited prematurely.${RESET}"; fi; }
-interrupted_exit() { echo -e "\n${EMP_RED_ERROR:-$'\033[0;31m'}${BOLD}\nScript interrupted by user. Exiting...${RESET}"; exit 130; }
-command_exists() { command -v "$1" >/dev/null 2>&1; }
+print_divider() {
+    echo -e "${TEXT_SHADOW}  ────────────────────────────────────────────────────────────────────${RESET}"
+}
 
-# --- Maintenance Task Functions ---
+print_section_header() {
+    local section_num="$1"
+    local section_name="$2"
+    echo ""
+    echo -e "${NEON_PURPLE}  ╔═══════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${NEON_PURPLE}  ║${RESET} ${NEON_CYAN}${BOLD}[${section_num}]${RESET} ${TEXT_BRIGHT}${BOLD}${section_name}${RESET}"
+    echo -e "${NEON_PURPLE}  ╚═══════════════════════════════════════════════════════════════════╝${RESET}"
+}
+
+cleanup_on_exit() {
+    tput cnorm 2>/dev/null || true
+    if [ "$SCRIPT_COMPLETED_SUCCESSFULLY" = "false" ]; then
+        echo ""
+        echo -e "${ERROR}${BOLD}  ⚠ Script exited prematurely${RESET}"
+        echo ""
+    fi
+}
+
+interrupted_exit() {
+    echo ""
+    echo -e "${ERROR}${BOLD}  ⚠ Script interrupted by user${RESET}"
+    echo ""
+    exit 130
+}
+
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+bytes_to_human() {
+    local bytes=$1
+    if [ "$bytes" -lt 1024 ]; then
+        echo "${bytes}B"
+    elif [ "$bytes" -lt 1048576 ]; then
+        echo "$((bytes / 1024))KB"
+    elif [ "$bytes" -lt 1073741824 ]; then
+        echo "$((bytes / 1048576))MB"
+    else
+        echo "$((bytes / 1073741824))GB"
+    fi
+}
+
+# --- Initialization ---
 section_initial_setup() {
-    log_action "Initializing system scan..."
+    log_action "Initializing system diagnostics..."
     R_SYSTEM["start_time"]=$(date +"%Y-%m-%d %H:%M:%S")
     export PAGER=cat
     export DEBIAN_FRONTEND=noninteractive
+
     if [ "$(id -u)" -ne 0 ]; then
-        echo -e "${EMP_RED_ERROR}ERROR: This script must be run with root privileges (sudo).${RESET}"
+        log_error "This script requires root privileges (sudo)"
         exit 1
     fi
-    log_detail "Running with root privileges ✓"
-    R_SYSTEM["privileges"]="${CHECKMARK} ${EMP_GREY_TEXT}Running with root privileges.${RESET}"
+
+    log_success "Root privileges confirmed"
+    log_detail "Hostname: $(hostname)"
+    log_detail "Kernel: $(uname -r)"
+    log_detail "Uptime: $(uptime -p)"
+
+    R_SYSTEM["privileges"]="${ICON_CHECK} Running with root privileges"
 }
 
-section_apt_initial_update() {
-    log_action "Updating APT package repositories..."
-    R_APT["version_initial"]="${EMP_WHITE_TEXT}$(apt --version | head -n 1 2>/dev/null || echo "N/A")${RESET}"
+# --- APT Package Management ---
+section_apt_maintenance() {
+    log_action "APT Package Management System"
 
-    if sudo apt update -y 2>&1 | tee >(tail -5 | sed 's/^/    /' >&2) >/dev/null; then
-        R_APT["update_status"]="${CHECKMARK} ${EMP_GREY_TEXT}Repository Update: Success${RESET}"
+    # Fix broken packages first
+    log_detail "Checking for broken packages..."
+    if dpkg --audit 2>&1 | grep -q "broken"; then
+        log_warning "Found broken packages - attempting repair"
+        sudo dpkg --configure -a 2>&1 | tail -3 | sed 's/^/      /'
+        sudo apt-get install -f -y 2>&1 | tail -3 | sed 's/^/      /'
+        log_fix "Repaired broken package dependencies"
+    fi
 
-        log_action "Performing full system upgrade..."
+    # Remove stale lock files
+    if [ -f /var/lib/dpkg/lock-frontend ] || [ -f /var/lib/apt/lists/lock ]; then
+        log_detail "Checking for stale lock files..."
+        if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+            sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock 2>/dev/null
+            log_fix "Removed stale package manager locks"
+        fi
+    fi
+
+    R_APT["version_initial"]="$(apt --version | head -n 1 2>/dev/null || echo "N/A")"
+
+    log_detail "Updating package repositories..."
+    if sudo apt update -y 2>&1 | tee >(tail -5 | sed 's/^/      /' >&2) >/dev/null; then
+        R_APT["update_status"]="${ICON_CHECK} Repository update successful"
+        log_success "Repositories updated"
+
+        log_detail "Upgrading system packages..."
         upgrade_output=$(sudo apt full-upgrade -y 2>&1)
-        echo "$upgrade_output" | grep -E "upgraded|newly installed|to remove" | sed 's/^/    /' || true
+        echo "$upgrade_output" | grep -E "upgraded|newly installed|to remove" | sed 's/^/      /' || true
 
-        if echo "$upgrade_output" | grep -Eq "0 upgraded, 0 newly installed, 0 to remove|nothing to upgrade"; then
-            R_APT["full_upgrade_status"]="${INFO} ${EMP_GREY_TEXT}System Packages: Already up-to-date${RESET}"
+        if echo "$upgrade_output" | grep -Eq "0 upgraded, 0 newly installed, 0 to remove"; then
+            R_APT["full_upgrade_status"]="${ICON_INFO} All packages up-to-date"
+            log_success "System already up-to-date"
         else
-            R_APT["full_upgrade_status"]="${CHECKMARK} ${EMP_GREY_TEXT}System Packages: Upgraded${RESET}"
+            R_APT["full_upgrade_status"]="${ICON_CHECK} System packages upgraded"
+            log_success "Packages upgraded successfully"
         fi
-        R_APT["full_upgrade_log"]="$upgrade_output"
 
-        log_action "Removing unnecessary packages..."
+        log_detail "Removing unnecessary packages..."
         autoremove_output=$(sudo apt autoremove -y 2>&1)
-        echo "$autoremove_output" | grep -E "Removing|upgraded" | sed 's/^/    /' || true
+        removed_count=$(echo "$autoremove_output" | grep -oP '\d+(?= to remove)' | head -1)
 
-        if echo "$autoremove_output" | grep -Eq "0 to remove|The following packages were automatically installed and are no longer required:"; then
-            if echo "$autoremove_output" | grep -Eq "0 upgraded, 0 newly installed, 0 to remove"; then
-                R_APT["autoremove_status"]="${INFO} ${EMP_GREY_TEXT}Package Autoremoval: No packages required removal${RESET}"
-            else
-                R_APT["autoremove_status"]="${CHECKMARK} ${EMP_GREY_TEXT}Package Autoremoval: Completed${RESET}"
-                R_APT["autoremove_details"]="$autoremove_output"
-            fi
+        if [ -n "$removed_count" ] && [ "$removed_count" -gt 0 ]; then
+            log_fix "Removed $removed_count unnecessary packages"
+            R_APT["autoremove_status"]="${ICON_CHECK} Removed $removed_count packages"
         else
-            R_APT["autoremove_status"]="${INFO} ${EMP_GREY_TEXT}Package Autoremoval: No packages required removal (or output unexpected)${RESET}"
+            R_APT["autoremove_status"]="${ICON_INFO} No packages to remove"
         fi
 
-        log_action "Cleaning APT cache..."
-        if sudo apt clean &>/dev/null; then
-            R_APT["cache_clean"]="${CHECKMARK} ${EMP_GREY_TEXT}APT Cache: Cleaned${RESET}"
+        log_detail "Cleaning package cache..."
+        cache_size_before=$(du -sb /var/cache/apt/archives 2>/dev/null | awk '{print $1}')
+        sudo apt clean &>/dev/null
+        cache_size_after=$(du -sb /var/cache/apt/archives 2>/dev/null | awk '{print $1}')
+        freed=$((cache_size_before - cache_size_after))
+        BYTES_FREED=$((BYTES_FREED + freed))
+
+        if [ "$freed" -gt 0 ]; then
+            log_success "Cleared $(bytes_to_human $freed) from APT cache"
+            R_APT["cache_clean"]="${ICON_CHECK} Cache cleaned"
         else
-            R_APT["cache_clean"]="${CROSS} ${EMP_GREY_TEXT}APT Cache: Clean failed${RESET}"
+            R_APT["cache_clean"]="${ICON_INFO} Cache already clean"
         fi
     else
-        R_APT["update_status"]="${CROSS} ${EMP_GREY_TEXT}Repository Update: Failed${RESET}"
-        R_APT["full_upgrade_status"]="${CROSS} ${EMP_GREY_TEXT}System Packages: Upgrade skipped${RESET}"
-        R_APT["autoremove_status"]="${CROSS} ${EMP_GREY_TEXT}Package Autoremoval: Skipped${RESET}"
-    fi
-
-    R_APT["version_final"]="${EMP_WHITE_TEXT}$(apt --version | head -n 1 2>/dev/null || echo "N/A")${RESET}"
-    if [ "${R_APT["version_initial"]}" != "${R_APT["version_final"]}" ] && [ "${R_APT["version_final"]}" != "${EMP_WHITE_TEXT}N/A${RESET}" ]; then
-        R_APT["version_change"]="${CHECKMARK} ${EMP_GREY_TEXT}APT Version: Updated (${R_APT["version_initial"]} -> ${R_APT["version_final"]})${RESET}"
-    else
-        R_APT["version_change"]="${INFO} ${EMP_GREY_TEXT}APT Version: Unchanged (${R_APT["version_final"]})${RESET}"
+        R_APT["update_status"]="${ICON_ERROR} Repository update failed"
+        log_error "Repository update failed"
     fi
 }
 
-section_apt_detailed_analysis() {
-    log_action "Analyzing package status..."
-    R_APT["held_packages"]="${EMP_WHITE_TEXT}$(apt-mark showhold 2>/dev/null)${RESET}"
-    if [ -z "$(apt-mark showhold 2>/dev/null)" ]; then
-        R_APT["held_packages"]="${EMP_WHITE_TEXT}None${RESET}"
-    fi
-    upgradable_raw=$(apt list --upgradable 2>/dev/null)
-    if echo "$upgradable_raw" | grep -q "Listing..."; then
-        R_APT["upgradable_list"]="\n$(echo "$upgradable_raw" | tail -n +2 | sed "s|^|         ${EMP_GREY_TEXT}|")"
-    else
-        R_APT["upgradable_list"]=" ${EMP_WHITE_TEXT}None${RESET}"
-    fi
-}
-
+# --- Snap Management ---
 section_snap_maintenance() {
     if command_exists snap; then
-        log_action "Checking Snap packages..."
-        R_SNAP["installed"]="${CHECKMARK} ${EMP_GREY_TEXT}Snap Service: Installed${RESET}"
+        log_action "Snap Package Management"
+        R_SNAP["installed"]="${ICON_CHECK} Snap installed"
+
+        # Remove old snap revisions
+        log_detail "Cleaning old snap revisions..."
+        snap_list=$(snap list --all | awk '/disabled/{print $1, $3}')
+        if [ -n "$snap_list" ]; then
+            removed_count=0
+            while read -r snapname revision; do
+                sudo snap remove "$snapname" --revision="$revision" &>/dev/null
+                ((removed_count++))
+            done <<< "$snap_list"
+            log_fix "Removed $removed_count old snap revisions"
+        fi
+
+        log_detail "Refreshing snap packages..."
         snap_output=$(sudo snap refresh 2>&1)
-        echo "$snap_output" | head -5 | sed 's/^/    /'
 
         if echo "$snap_output" | grep -qi "All snaps up to date"; then
-            R_SNAP["updates"]="${INFO} ${EMP_GREY_TEXT}Snap Packages: All up-to-date${RESET}"
-        elif echo "$snap_output" | grep -qi "no snaps found"; then
-            R_SNAP["updates"]="${INFO} ${EMP_GREY_TEXT}Snap Packages: None installed${RESET}"
+            R_SNAP["updates"]="${ICON_INFO} All snaps up-to-date"
+            log_success "Snap packages up-to-date"
         elif echo "$snap_output" | grep -E "refreshed|snap"; then
-            R_SNAP["updates"]="${CHECKMARK} ${EMP_GREY_TEXT}Snap Packages: Refreshed${RESET}"
-            R_SNAP["details"]="$snap_output"
-        else
-            R_SNAP["updates"]="${WARN} ${EMP_GREY_TEXT}Snap Packages: Refresh status uncertain${RESET}"
-            R_SNAP["details"]="$snap_output"
+            R_SNAP["updates"]="${ICON_CHECK} Snap packages refreshed"
+            log_success "Snap packages updated"
         fi
     else
-        R_SNAP["installed"]="${INFO} ${EMP_GREY_TEXT}Snap Service: Not installed${RESET}"
-        R_SNAP["updates"]="N/A"
+        R_SNAP["installed"]="${ICON_INFO} Snap not installed"
     fi
 }
 
-flatpak_output_contains_package_name() { echo "$1" | grep -E '^[a-zA-Z0-9_-]+\s+[a-zA-Z0-9_.-]+\s+[a-zA-Z0-9_.-]+' > /dev/null; }
-
+# --- Flatpak Management ---
 section_flatpak_maintenance() {
     if command_exists flatpak; then
-        log_action "Checking Flatpak applications..."
-        R_FLATPAK["installed"]="${CHECKMARK} ${EMP_GREY_TEXT}Flatpak Service: Installed${RESET}"
+        log_action "Flatpak Application Management"
+        R_FLATPAK["installed"]="${ICON_CHECK} Flatpak installed"
+
+        log_detail "Updating flatpak applications..."
         flatpak_output=$(flatpak update -y 2>&1)
-        echo "$flatpak_output" | head -5 | sed 's/^/    /'
 
         if echo "$flatpak_output" | grep -qi "Nothing to do"; then
-            R_FLATPAK["updates"]="${INFO} ${EMP_GREY_TEXT}Flatpak Applications: All up-to-date${RESET}"
-        elif echo "$flatpak_output" | grep -Eqi "Updating|Changes:" || flatpak_output_contains_package_name "$flatpak_output"; then
-            R_FLATPAK["updates"]="${CHECKMARK} ${EMP_GREY_TEXT}Flatpak Applications: Updated${RESET}"
-            R_FLATPAK["details"]="$flatpak_output"
-        elif echo "$flatpak_output" | grep -qi "No remote refs found"; then
-            R_FLATPAK["updates"]="${INFO} ${EMP_GREY_TEXT}Flatpak Applications: None installed or no remotes configured${RESET}"
-        else
-            R_FLATPAK["updates"]="${WARN} ${EMP_GREY_TEXT}Flatpak Applications: Update status uncertain${RESET}"
-            R_FLATPAK["details"]="$flatpak_output"
+            R_FLATPAK["updates"]="${ICON_INFO} All flatpaks up-to-date"
+            log_success "Flatpak applications up-to-date"
+        elif echo "$flatpak_output" | grep -Eqi "Updating|Changes:"; then
+            R_FLATPAK["updates"]="${ICON_CHECK} Flatpak applications updated"
+            log_success "Flatpak applications updated"
+        fi
+
+        log_detail "Removing unused flatpak runtimes..."
+        unused_output=$(flatpak uninstall --unused -y 2>&1)
+        if echo "$unused_output" | grep -q "Uninstalling"; then
+            log_fix "Removed unused flatpak runtimes"
         fi
     else
-        R_FLATPAK["installed"]="${INFO} ${EMP_GREY_TEXT}Flatpak Service: Not installed${RESET}"
-        R_FLATPAK["updates"]="N/A"
+        R_FLATPAK["installed"]="${ICON_INFO} Flatpak not installed"
     fi
 }
 
+# --- System Utilities ---
 section_hardware_utility_installation() {
-    log_action "Verifying system utilities are installed..."
-    local tools_installed_report=""
+    log_action "Essential System Utilities"
+
     local tools_to_check=(
         "cpufrequtils:cpufreq-info"
         "lm-sensors:sensors"
@@ -216,709 +371,447 @@ section_hardware_utility_installation() {
         "preload:preload"
         "ncdu:ncdu"
         "btop:btop"
+        "iotop:iotop"
+        "htop:htop"
+        "net-tools:ifconfig"
     )
-    R_HARDWARE["utils_log_header"]="System Utilities Check:"
 
     for entry in "${tools_to_check[@]}"; do
         local pkg="${entry%%:*}"
-        local cmd_to_check="${entry##*:}"
-        local tool_name_display=$(printf "%-18s" "$pkg")
-        local status_text="" icon=""
+        local cmd="${entry##*:}"
 
-        if ! command_exists "$cmd_to_check"; then
+        if ! command_exists "$cmd"; then
             log_detail "Installing $pkg..."
-            if sudo apt install -y "$pkg" 2>&1 | grep -E "Setting up|Processing" | tail -3 | sed 's/^/      /'; then
-                status_text="Installed (was missing)"
-                icon="${CHECKMARK}"
+            if sudo apt install -y "$pkg" &>/dev/null; then
+                log_success "$pkg installed"
             else
-                status_text="Installation FAILED (package: $pkg)"
-                icon="${CROSS}"
+                log_warning "Failed to install $pkg"
             fi
-        else
-            status_text="Present"
-            icon="${CHECKMARK}"
         fi
-        tools_installed_report+="    ${icon} ${EMP_GREY_TEXT}${tool_name_display}: ${status_text}${RESET}\n"
     done
-
-    R_HARDWARE["utils_installation_report"]=$(echo -e "$tools_installed_report")
 }
 
-section_firmware_update() {
-    if command_exists fwupdmgr; then
-        log_action "Checking firmware updates..."
-        R_HARDWARE["fwupdmgr_status"]="${CHECKMARK} ${EMP_GREY_TEXT}fwupdmgr Service: Available${RESET}"
+# --- System Cleanup & Optimization ---
+section_deep_cleanup() {
+    log_action "Deep System Cleanup"
 
-        if sudo fwupdmgr refresh --force 2>&1 | tail -3 | sed 's/^/    /'; then
-            R_HARDWARE["fw_refresh"]="${CHECKMARK} ${EMP_GREY_TEXT}Metadata Refresh: Success${RESET}"
-        else
-            R_HARDWARE["fw_refresh"]="${WARN} ${EMP_GREY_TEXT}Metadata Refresh: Issues detected or no new data${RESET}"
-        fi
-
-        fw_updates_available_output=$(sudo fwupdmgr get-updates 2>&1)
-        echo "$fw_updates_available_output" | head -5 | sed 's/^/    /'
-
-        if echo "$fw_updates_available_output" | grep -qi "No upgrades available" || echo "$fw_updates_available_output" | grep -qi "no devices support firmware updates"; then
-            R_HARDWARE["fw_updates_available"]="${INFO} ${EMP_GREY_TEXT}Available Firmware: None or no devices support updates${RESET}"
-        else
-            R_HARDWARE["fw_updates_available"]="${WARN} ${EMP_GREY_TEXT}Available Firmware: Updates may be available, attempting application...${RESET}"
-            fw_update_apply_log=$(sudo fwupdmgr update -y 2>&1)
-            echo "$fw_update_apply_log" | head -5 | sed 's/^/    /'
-
-            local fw_apply_msg_base="${EMP_GREY_TEXT}Firmware Application: Process completed. Review details manually"
-            local formatted_log_details_for_fw=""
-            if [ -n "$fw_update_apply_log" ]; then
-                formatted_log_details_for_fw=$'\n                           '${EMP_GREY_TEXT}"Details (first few lines):\n$(printf "%s" "$fw_update_apply_log" | head -n 3 | sed 's|^|                           |')${RESET}"
-            fi
-
-            if echo "$fw_update_apply_log" | grep -qi "Successfully installed"; then
-                R_HARDWARE["fw_updates_applied"]="${CHECKMARK} ${EMP_GREY_TEXT}Firmware Application: Updates applied (reboot may be required)${RESET}"
-            elif echo "$fw_update_apply_log" | grep -qi "No upgrades"; then
-                R_HARDWARE["fw_updates_applied"]="${INFO} ${EMP_GREY_TEXT}Firmware Application: No updates were ultimately applied${RESET}"
-            else
-                R_HARDWARE["fw_updates_applied"]="${WARN} ${fw_apply_msg_base}${formatted_log_details_for_fw}"
-            fi
-
-            if echo "$fw_update_apply_log" | grep -qi "UEFI capsule updates not available or enabled"; then
-                R_HARDWARE["fw_capsule_warning"]="${WARN} ${EMP_GREY_TEXT}UEFI Note: Capsule updates might be disabled in BIOS/UEFI setup.${RESET}${EMP_GREY_TEXT}\n                           (Ref: https://github.com/fwupd/fwupd/wiki/PluginFlag:capsules-unsupported)${RESET}"
-            fi
-        fi
-    else
-        R_HARDWARE["fwupdmgr_status"]="${CROSS} ${EMP_GREY_TEXT}fwupdmgr Service: Not installed${RESET}"
+    # Clean thumbnail cache
+    log_detail "Cleaning thumbnail cache..."
+    if [ -d "$HOME/.cache/thumbnails" ]; then
+        size_before=$(du -sb "$HOME/.cache/thumbnails" 2>/dev/null | awk '{print $1}')
+        rm -rf "$HOME/.cache/thumbnails"/* 2>/dev/null
+        size_after=$(du -sb "$HOME/.cache/thumbnails" 2>/dev/null | awk '{print $1}')
+        freed=$((size_before - size_after))
+        BYTES_FREED=$((BYTES_FREED + freed))
+        log_fix "Cleared $(bytes_to_human $freed) from thumbnail cache"
     fi
-}
 
-perform_hdd_defrag() {
-    local device_path="$1"
-    local mount_point="$2"
-    local report_line=""
-
-    if command_exists e4defrag; then
-        log_detail "Checking fragmentation on $device_path..."
-        check_output=$(sudo e4defrag -c "$mount_point" 2>&1)
-        echo "$check_output" | grep -E "fragmentation|Total files" | sed 's/^/      /'
-
-        fragmentation=$(echo "$check_output" | grep "fragmentation score is" | awk '{print $NF}' | tr -d '%')
-        current_files_fragmented=$(echo "$check_output" | grep "Total files" | awk '{print $4}')
-
-        if [ -z "$fragmentation" ]; then
-            if echo "$check_output" | grep -qi "filesystem does not support"; then
-                report_line="    ${INFO} ${EMP_GREY_TEXT}Defrag ${device_path} (${mount_point}): Filesystem not supported by e4defrag.${RESET}"
-            else
-                report_line="    ${WARN} ${EMP_GREY_TEXT}Defrag ${device_path} (${mount_point}): Fragmentation unknown. Output: $check_output${RESET}"
-            fi
-        elif [ "$fragmentation" -gt 20 ] || [ "$current_files_fragmented" -gt 1000 ]; then
-            report_line="    ${WARN} ${EMP_GREY_TEXT}Defrag ${device_path} (${mount_point}): Fragmentation ${fragmentation}% (${current_files_fragmented} files). Defragmenting...${RESET} "
-            log_detail "Running defragmentation on $mount_point..."
-            if sudo e4defrag "$mount_point" 2>&1 | tail -5 | sed 's/^/      /'; then
-                report_line+="${CHECKMARK}"
-            else
-                report_line+="${CROSS}"
-            fi
-        else
-            report_line="    ${INFO} ${EMP_GREY_TEXT}Defrag ${device_path} (${mount_point}): Fragmentation ${fragmentation}% (${current_files_fragmented} files). Not critical.${RESET}"
-        fi
-    else
-        report_line="    ${CROSS} ${EMP_GREY_TEXT}Defrag ${device_path} (${mount_point}): e4defrag not installed.${RESET}"
+    # Clean old journal logs
+    log_detail "Trimming old journal logs..."
+    if command_exists journalctl; then
+        size_before=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+\.\d+[MG]' | head -1)
+        sudo journalctl --vacuum-time=7d &>/dev/null
+        sudo journalctl --vacuum-size=500M &>/dev/null
+        size_after=$(journalctl --disk-usage 2>/dev/null | grep -oP '\d+\.\d+[MG]' | head -1)
+        log_fix "Journal logs trimmed (now: $size_after)"
     fi
-    echo -e "$report_line"
+
+    # Clean old logs
+    log_detail "Cleaning old system logs..."
+    old_logs=$(find /var/log -type f -name "*.gz" -o -name "*.old" -o -name "*.[0-9]" 2>/dev/null | wc -l)
+    if [ "$old_logs" -gt 0 ]; then
+        find /var/log -type f \( -name "*.gz" -o -name "*.old" -o -name "*.[0-9]" \) -delete 2>/dev/null
+        log_fix "Removed $old_logs old log files"
+    fi
+
+    # Clean /tmp and /var/tmp
+    log_detail "Cleaning temporary files..."
+    tmp_size=$(du -sb /tmp /var/tmp 2>/dev/null | awk '{sum+=$1} END {print sum}')
+    find /tmp -type f -atime +7 -delete 2>/dev/null
+    find /var/tmp -type f -atime +7 -delete 2>/dev/null
+    tmp_size_after=$(du -sb /tmp /var/tmp 2>/dev/null | awk '{sum+=$1} END {print sum}')
+    freed=$((tmp_size - tmp_size_after))
+    if [ "$freed" -gt 0 ]; then
+        BYTES_FREED=$((BYTES_FREED + freed))
+        log_fix "Cleared $(bytes_to_human $freed) from temp directories"
+    fi
+
+    # Clean old crash reports
+    if [ -d /var/crash ]; then
+        crash_count=$(find /var/crash -type f 2>/dev/null | wc -l)
+        if [ "$crash_count" -gt 0 ]; then
+            rm -rf /var/crash/* 2>/dev/null
+            log_fix "Removed $crash_count crash reports"
+        fi
+    fi
+
+    # Remove broken symlinks
+    log_detail "Removing broken symlinks..."
+    broken_links=$(find /usr /opt /home -xtype l 2>/dev/null | wc -l)
+    if [ "$broken_links" -gt 0 ]; then
+        find /usr /opt /home -xtype l -delete 2>/dev/null
+        log_fix "Removed $broken_links broken symlinks"
+    fi
+
+    # Clean package manager caches
+    log_detail "Purging orphaned configuration files..."
+    orphaned=$(dpkg -l | grep '^rc' | awk '{print $2}')
+    if [ -n "$orphaned" ]; then
+        orphan_count=$(echo "$orphaned" | wc -l)
+        echo "$orphaned" | xargs sudo apt-get purge -y &>/dev/null
+        log_fix "Purged $orphan_count orphaned configs"
+    fi
+
+    R_CLEANUP["status"]="${ICON_CHECK} Deep cleanup completed"
 }
 
+# --- Drive Maintenance ---
 section_drive_maintenance() {
-    log_action "Performing drive maintenance (TRIM/Defrag)..."
-    local drive_reports=""
-    local rotational_files_checked=0
-    local suitable_partitions_found=0
-    local lsblk_output
+    log_action "Drive Maintenance & Health"
 
-    if ! command_exists lsblk; then
-        R_DRIVES["summary"]="${CROSS} ${EMP_GREY_TEXT}Drive Maintenance: lsblk command not found.${RESET}"
-        return
-    fi
-
-    lsblk_output=$(lsblk -P -o NAME,TYPE,MOUNTPOINT,FSTYPE,PKNAME,ROTA 2>&1)
-    local lsblk_rc=$?
-
-    if [ $lsblk_rc -ne 0 ]; then
-        R_DRIVES["summary"]="${CROSS} ${EMP_GREY_TEXT}Drive Maintenance: lsblk command failed (rc $lsblk_rc). Output: $lsblk_output${RESET}"
-        return
-    fi
-
-    if [ -z "$lsblk_output" ]; then
-        R_DRIVES["summary"]="${WARN} ${EMP_GREY_TEXT}Drive Maintenance: lsblk returned no output.${RESET}"
-        return
-    fi
+    local lsblk_output=$(lsblk -P -o NAME,TYPE,MOUNTPOINT,FSTYPE,PKNAME,ROTA 2>&1)
 
     while IFS= read -r line; do
         NAME="" TYPE="" MOUNTPOINT="" FSTYPE="" PKNAME="" ROTA=""
         eval "$line"
 
         if [ "$TYPE" = "part" ] && [ -n "$MOUNTPOINT" ]; then
-            rotational_files_checked=$((rotational_files_checked + 1))
-            local base_device_name="${PKNAME:-$(echo "$NAME" | sed 's/[0-9]*$//')}"
-            local full_device_path="/dev/$NAME"
+            local device="/dev/$NAME"
 
-            if [ -n "$ROTA" ]; then
-                if [ "$ROTA" = "0" ]; then
-                    suitable_partitions_found=$((suitable_partitions_found + 1))
-                    log_detail "Trimming SSD: $full_device_path ($MOUNTPOINT)..."
-                    if command_exists fstrim; then
-                        trim_output=$(sudo fstrim -v "$MOUNTPOINT" 2>&1)
-                        echo "$trim_output" | sed 's/^/      /'
-                        local fstrim_rc=$?
-                        if [ $fstrim_rc -eq 0 ]; then
-                            drive_reports+="    ${CHECKMARK} ${EMP_GREY_TEXT}SSD Trim ${full_device_path} (${MOUNTPOINT}): Performed${RESET}\n"
-                        else
-                            drive_reports+="    ${CROSS} ${EMP_GREY_TEXT}SSD Trim ${full_device_path} (${MOUNTPOINT}): Failed (Code: $fstrim_rc)${RESET}\n"
-                        fi
-                    else
-                        drive_reports+="    ${WARN} ${EMP_GREY_TEXT}SSD Trim ${full_device_path} (${MOUNTPOINT}): fstrim not found${RESET}\n"
-                    fi
-                elif [ "$ROTA" = "1" ]; then
-                    if [ "$FSTYPE" = "ext4" ]; then
-                        suitable_partitions_found=$((suitable_partitions_found + 1))
-                        defrag_result=$(perform_hdd_defrag "$full_device_path" "$MOUNTPOINT")
-                        drive_reports+="$defrag_result\n"
+            if [ "$ROTA" = "0" ]; then
+                # SSD - TRIM
+                log_detail "Trimming SSD: $device ($MOUNTPOINT)..."
+                if command_exists fstrim; then
+                    trim_output=$(sudo fstrim -v "$MOUNTPOINT" 2>&1 | grep -oP '\d+(\.\d+)? [KMG]?B')
+                    if [ -n "$trim_output" ]; then
+                        log_success "Trimmed $trim_output on $device"
                     fi
                 fi
-            else
-                drive_reports+="    ${WARN} ${EMP_GREY_TEXT}Drive ${full_device_path} (${MOUNTPOINT}): Type unknown (No ROTA attribute). Skipped.${RESET}\n"
+
+                # Optimize SSD scheduler
+                local sched_file="/sys/block/${PKNAME}/queue/scheduler"
+                if [ -f "$sched_file" ]; then
+                    if ! grep -q "\[none\]" "$sched_file" && ! grep -q "\[noop\]" "$sched_file"; then
+                        echo "none" | sudo tee "$sched_file" &>/dev/null || echo "noop" | sudo tee "$sched_file" &>/dev/null
+                        log_fix "Optimized I/O scheduler for SSD $PKNAME"
+                    fi
+                fi
+
+            elif [ "$ROTA" = "1" ] && [ "$FSTYPE" = "ext4" ]; then
+                # HDD - Check fragmentation
+                if command_exists e4defrag; then
+                    log_detail "Checking fragmentation: $device..."
+                    frag_output=$(sudo e4defrag -c "$MOUNTPOINT" 2>&1)
+                    frag_pct=$(echo "$frag_output" | grep -oP '\d+(?=% )' | tail -1)
+
+                    if [ -n "$frag_pct" ] && [ "$frag_pct" -gt 15 ]; then
+                        log_warning "High fragmentation ($frag_pct%) - defragmenting..."
+                        sudo e4defrag "$MOUNTPOINT" &>/dev/null
+                        log_fix "Defragmented $device"
+                    fi
+                fi
+
+                # Optimize HDD scheduler
+                local sched_file="/sys/block/${PKNAME}/queue/scheduler"
+                if [ -f "$sched_file" ]; then
+                    if ! grep -q "\[deadline\]" "$sched_file" && ! grep -q "\[mq-deadline\]" "$sched_file"; then
+                        echo "mq-deadline" | sudo tee "$sched_file" &>/dev/null || echo "deadline" | sudo tee "$sched_file" &>/dev/null
+                        log_fix "Optimized I/O scheduler for HDD $PKNAME"
+                    fi
+                fi
             fi
         fi
     done <<< "$lsblk_output"
 
-    if [ -n "$drive_reports" ]; then
-        R_DRIVES["summary"]="$(echo -e "$drive_reports" | sed '/^[[:space:]]*$/d')"
-    elif [ $rotational_files_checked -eq 0 ]; then
-        R_DRIVES["summary"]="    ${WARN} ${EMP_GREY_TEXT}Drive Maintenance: No mounted partitions identified for processing.${RESET}"
-    elif [ $suitable_partitions_found -eq 0 ]; then
-        R_DRIVES["summary"]="    ${INFO} ${EMP_GREY_TEXT}Drive Maintenance: All partitions checked, none required trim/defrag.${RESET}"
-    else
-        R_DRIVES["summary"]="    ${INFO} ${EMP_GREY_TEXT}Drive Maintenance: No specific actions performed.${RESET}"
-    fi
-
-    if [ -z "$(echo -e "${R_DRIVES["summary"]}" | tr -d '[:space:]')" ]; then
-        R_DRIVES["summary"]="    ${WARN} ${EMP_GREY_TEXT}Drive Maintenance: Status uncertain.${RESET}"
-    fi
-}
-
-section_hardware_status_checks() {
-    log_action "Running hardware status checks..."
-
-    R_HARDWARE["cpu_tool_label"]="CPU Info Utility"
-    if command_exists cpufreq-info; then
-        R_HARDWARE["cpu_info_tool"]="${CHECKMARK} ${EMP_GREY_TEXT}cpufreq-info v$(dpkg-query -W -f='${Version}' cpufrequtils 2>/dev/null || echo "N/A")${RESET}"
-    else
-        R_HARDWARE["cpu_info_tool"]="${WARN} ${EMP_GREY_TEXT}cpufreq-utils not installed.${RESET}"
-    fi
-
-    R_HARDWARE["sensor_tool_label"]="Sensor Utility"
-    if command_exists sensors; then
-        R_HARDWARE["sensors_tool"]="${CHECKMARK} ${EMP_GREY_TEXT}lm-sensors v$(dpkg-query -W -f='${Version}' lm-sensors 2>/dev/null || echo "N/A")${RESET}"
-    else
-        R_HARDWARE["sensors_tool"]="${WARN} ${EMP_GREY_TEXT}lm-sensors not installed.${RESET}"
-    fi
-
-    R_HARDWARE["smart_label"]="SMART Disk Health"
-    local smart_reports=""
-
-    if command_exists smartctl; then
-        log_detail "Checking SMART disk health..."
-        for disk_dev_path in $(lsblk -ndo NAME,TYPE | grep 'disk$' | awk '{print "/dev/"$1}'); do
-            log_detail "Scanning $disk_dev_path..."
-            smart_output=$(sudo smartctl -H "$disk_dev_path" 2>&1)
-            echo "$smart_output" | grep -E "SMART|PASSED|FAILED" | head -2 | sed 's/^/      /'
-
-            local disk_name_display=$(printf "%-18s" "$disk_dev_path")
-            local smart_status_text=""
-            local icon=""
-
-            if echo "$smart_output" | grep -qi "PASSED\|OK"; then
-                smart_status_text="PASSED"
-                icon="${CHECKMARK}"
-            elif echo "$smart_output" | grep -qi "FAILED"; then
-                smart_status_text="FAILED!"
-                icon="${CROSS}"
-            elif echo "$smart_output" | grep -qi "Unknown USB bridge"; then
-                smart_status_text="SKIPPED (Unknown USB bridge)"
-                icon="${WARN}"
-            elif echo "$smart_output" | grep -qi "Smartctl open device.*failed"; then
-                smart_status_text="FAILED (Cannot open device)"
-                icon="${WARN}"
-            else
-                smart_status_text="Status UNKNOWN or NOT SUPPORTED"
-                icon="${WARN}"
-            fi
-            smart_reports+="    ${icon} ${EMP_GREY_TEXT}${disk_name_display}: ${smart_status_text}${RESET}\n"
-        done
-
-        if [ -z "$smart_reports" ]; then
-            R_HARDWARE["smart_status"]="    ${INFO} ${EMP_GREY_TEXT}No physical disks found or smartctl access denied.${RESET}"
-        else
-            R_HARDWARE["smart_status"]="$smart_reports"
+    # Enable fstrim.timer for automatic SSD maintenance
+    if systemctl list-unit-files | grep -q "fstrim.timer"; then
+        if ! systemctl is-enabled fstrim.timer &>/dev/null; then
+            sudo systemctl enable fstrim.timer &>/dev/null
+            log_fix "Enabled automatic weekly SSD TRIM"
         fi
-    else
-        R_HARDWARE["smart_status"]="    ${CROSS} ${EMP_GREY_TEXT}smartmontools not installed.${RESET}"
     fi
 }
 
-section_additional_optimizations() {
-    log_action "Applying system optimizations..."
+# --- Performance Optimizations ---
+section_performance_optimization() {
+    log_action "Performance Optimization"
 
-    log_detail "Clearing system cache..."
+    # Optimize swappiness
+    log_detail "Checking swappiness..."
+    current_swap=$(cat /proc/sys/vm/swappiness)
+    if [ "$current_swap" -gt 10 ]; then
+        sudo sysctl vm.swappiness=10 &>/dev/null
+        echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-swappiness.conf &>/dev/null
+        log_fix "Optimized swappiness: $current_swap → 10"
+    else
+        log_success "Swappiness optimal ($current_swap)"
+    fi
+
+    # Optimize dirty page writeback
+    if [ "$(cat /proc/sys/vm/dirty_ratio)" -gt 10 ]; then
+        sudo sysctl vm.dirty_ratio=10 &>/dev/null
+        sudo sysctl vm.dirty_background_ratio=5 &>/dev/null
+        echo "vm.dirty_ratio=10" | sudo tee -a /etc/sysctl.d/99-performance.conf &>/dev/null
+        echo "vm.dirty_background_ratio=5" | sudo tee -a /etc/sysctl.d/99-performance.conf &>/dev/null
+        log_fix "Optimized dirty page writeback"
+    fi
+
+    # Clear caches
+    log_detail "Clearing system caches..."
     sudo sync
-    if echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; then
-        R_OPTIMIZATIONS["cache_cleared"]="${CHECKMARK} ${EMP_GREY_TEXT}System Cache Clear: Success${RESET}"
-    else
-        R_OPTIMIZATIONS["cache_cleared"]="${CROSS} ${EMP_GREY_TEXT}System Cache Clear: Failed${RESET}"
-    fi
+    echo 3 | sudo tee /proc/sys/vm/drop_caches &>/dev/null
+    log_success "System caches cleared"
 
-    log_detail "Checking for orphaned configuration files..."
-    local orphaned_configs
-    orphaned_configs=$(dpkg -l | grep '^rc' | awk '{print $2}')
+    # Disable unnecessary services
+    log_detail "Analyzing startup services..."
+    local services_to_disable=()
 
-    if [ -n "$orphaned_configs" ]; then
-        R_OPTIMIZATIONS["orphaned_configs_status"]="${WARN} ${EMP_GREY_TEXT}Orphaned Configs: Found. Purging...${RESET}"
-        echo "$orphaned_configs" | head -5 | sed 's/^/      /'
-        purge_output=$(echo "$orphaned_configs" | xargs sudo apt-get purge -y 2>&1)
-        R_OPTIMIZATIONS["orphaned_configs_details"]="\n$(echo "$purge_output" | sed "s|^|                           |")"
-        R_OPTIMIZATIONS["orphaned_configs_status"]+="${CHECKMARK}"
-    else
-        R_OPTIMIZATIONS["orphaned_configs_status"]="${INFO} ${EMP_GREY_TEXT}Orphaned Configs: None found${RESET}"
-    fi
-
-    log_detail "Checking swappiness value..."
-    if [ -f /proc/sys/vm/swappiness ]; then
-        current_swappiness=$(cat /proc/sys/vm/swappiness)
-        R_OPTIMIZATIONS["swappiness_current_value"]="$current_swappiness"
-        echo "      Current swappiness: $current_swappiness"
-
-        if [ "$current_swappiness" -gt 20 ]; then
-            R_OPTIMIZATIONS["swappiness"]="${WARN} ${EMP_GREY_TEXT}Swappiness: $current_swappiness (High)${RESET}"
-            R_OPTIMIZATIONS["swappiness_guidance"]="                           ${EMP_GREY_TEXT}Recommended: 10-20. Can be adjusted in post-scan actions.${RESET}"
-        else
-            R_OPTIMIZATIONS["swappiness"]="${CHECKMARK} ${EMP_GREY_TEXT}Swappiness: $current_swappiness (Optimal)${RESET}"
+    # Only suggest disabling if they exist and are enabled
+    for service in bluetooth.service cups.service avahi-daemon.service; do
+        if systemctl is-enabled "$service" &>/dev/null && ! systemctl is-active "$service" &>/dev/null; then
+            services_to_disable+=("$service")
         fi
-    else
-        R_OPTIMIZATIONS["swappiness"]="${INFO} ${EMP_GREY_TEXT}Swappiness: Unknown${RESET}"
-        R_OPTIMIZATIONS["swappiness_current_value"]="unknown"
+    done
+
+    if [ ${#services_to_disable[@]} -gt 0 ]; then
+        log_detail "Found ${#services_to_disable[@]} unused services that can be disabled"
     fi
 
-    log_detail "Checking CPU governor..."
-    local governors=""
-    local kernel_release=$(uname -r)
-
-    if command_exists cpupower; then
-        governors=$(cpupower frequency-info -g 2>/dev/null | awk '/analyzing CPU/ {cpu=$3} /current policy/ {split($0,a,":"); gov=a[2]; gsub(/[^a-zA-Z0-9]/,"",gov); if(gov) print "CPU"cpu":"gov}' | sort -u | paste -sd ", " -)
-        if [ -n "$governors" ]; then
-            R_OPTIMIZATIONS["cpu_governor"]="${INFO} ${EMP_GREY_TEXT}CPU Governor: $governors (via cpupower)${RESET}"
-            echo "      $governors"
-        fi
-    fi
-
-    if [ -z "$governors" ]; then
-        if command_exists cpufreq-info; then
-            governors=$(cpufreq-info -g 2>/dev/null | paste -sd ", " -)
-            if [ -n "$governors" ]; then
-                R_OPTIMIZATIONS["cpu_governor"]="${INFO} ${EMP_GREY_TEXT}CPU Governor: $governors (via cpufreq-info)${RESET}"
-                echo "      $governors"
+    # Check for failed services and try to restart
+    log_detail "Checking for failed services..."
+    failed_services=$(systemctl list-units --state=failed --no-pager --no-legend | awk '{print $1}')
+    if [ -n "$failed_services" ]; then
+        while read -r service; do
+            log_detail "Attempting to restart: $service"
+            if sudo systemctl restart "$service" &>/dev/null; then
+                log_fix "Restarted failed service: $service"
             fi
+        done <<< "$failed_services"
+    fi
+
+    # Optimize preload
+    if command_exists preload; then
+        if ! systemctl is-active preload &>/dev/null; then
+            sudo systemctl start preload &>/dev/null
+            sudo systemctl enable preload &>/dev/null
+            log_fix "Enabled preload for faster application startup"
         fi
     fi
 
-    if [ -z "$governors" ]; then
-        R_OPTIMIZATIONS["cpu_governor"]="${WARN} ${EMP_GREY_TEXT}CPU Governor: Unknown${RESET}"
-        if command_exists cpupower && ! dpkg-query -s "linux-tools-${kernel_release}" &>/dev/null && ! dpkg-query -s "linux-tools-generic" &>/dev/null ; then
-            R_OPTIMIZATIONS["cpu_governor_suggestion"]="                           ${EMP_GREY_TEXT}Consider: sudo apt install linux-tools-${kernel_release} linux-tools-common${RESET}"
-        elif ! command_exists cpupower && ! command_exists cpufreq-info; then
-            R_OPTIMIZATIONS["cpu_governor_suggestion"]="                           ${EMP_GREY_TEXT}Consider: sudo apt install cpufrequtils or linux-tools-common${RESET}"
+    R_OPTIMIZATIONS["status"]="${ICON_CHECK} Performance optimized"
+}
+
+# --- Hardware & Firmware ---
+section_hardware_checks() {
+    log_action "Hardware Health & Firmware"
+
+    # SMART disk health
+    if command_exists smartctl; then
+        log_detail "Checking disk health (SMART)..."
+        for disk in $(lsblk -ndo NAME,TYPE | grep 'disk$' | awk '{print "/dev/"$1}'); do
+            smart_output=$(sudo smartctl -H "$disk" 2>&1)
+            if echo "$smart_output" | grep -qi "PASSED"; then
+                log_success "$(basename $disk): SMART PASSED"
+            elif echo "$smart_output" | grep -qi "FAILED"; then
+                log_error "$(basename $disk): SMART FAILED - Check disk!"
+                ((ISSUES_FOUND++))
+            fi
+        done
+    fi
+
+    # Firmware updates
+    if command_exists fwupdmgr; then
+        log_detail "Checking firmware updates..."
+        sudo fwupdmgr refresh --force &>/dev/null
+        fw_updates=$(sudo fwupdmgr get-updates 2>&1)
+
+        if ! echo "$fw_updates" | grep -qi "No upgrades"; then
+            log_warning "Firmware updates available"
+            ((ISSUES_FOUND++))
         fi
-    fi
-
-    log_detail "Checking log usage..."
-    if command_exists du; then
-        log_size=$(sudo du -sh /var/log | awk '{print $1}')
-        R_OPTIMIZATIONS["log_usage"]="${INFO} ${EMP_GREY_TEXT}Log Usage (/var/log):${RESET} ${EMP_WHITE_TEXT}${log_size}${RESET}"
-        echo "      /var/log size: $log_size"
-    else
-        R_OPTIMIZATIONS["log_usage"]="${INFO} ${EMP_GREY_TEXT}Log Usage (/var/log): Unknown ('du' not found)${RESET}"
-    fi
-
-    log_detail "Analyzing slowest startup services..."
-    if command_exists systemd-analyze; then
-        R_OPTIMIZATIONS["slow_services"]="\n$(systemd-analyze blame | head -n 3 | sed "s|^|                           |")"
-        systemd-analyze blame | head -n 3 | sed 's/^/      /'
-    else
-        R_OPTIMIZATIONS["slow_services"]=" ${EMP_GREY_TEXT}Not available.${RESET}"
-    fi
-
-    if command_exists preload && systemctl is-active --quiet preload; then
-        R_OPTIMIZATIONS["preload_status"]="${CHECKMARK} ${EMP_GREY_TEXT}Preload Service: Active${RESET}"
-    else
-        R_OPTIMIZATIONS["preload_status"]="${INFO} ${EMP_GREY_TEXT}Preload Service: Inactive or not installed${RESET}"
     fi
 }
 
-section_journal_health_and_config() {
-    log_action "Checking system journal health..."
-    local journal_conf_file="/etc/systemd/journald.conf"
-    local max_size_setting="SystemMaxUse=500M"
-    local config_changed=false
+# --- Network Optimization ---
+section_network_optimization() {
+    log_action "Network Configuration"
 
-    if [ -f "$journal_conf_file" ]; then
-        log_detail "Checking journal configuration..."
-        if grep -q "^#\?SystemMaxUse=" "$journal_conf_file"; then
-            current_size=$(grep "^#\?SystemMaxUse=" "$journal_conf_file" | tail -n1 | cut -d'=' -f2)
-            echo "      Current max size: $current_size"
-            if [ "$current_size" != "500M" ]; then
-                sudo sed -i "s|^#\?SystemMaxUse=.*|$max_size_setting|" "$journal_conf_file"
-                config_changed=true
-            fi
-        else
-            sudo bash -c "echo '' >> $journal_conf_file && echo '$max_size_setting' >> $journal_conf_file"
-            config_changed=true
+    # Fix DNS if needed
+    if [ -f /etc/resolv.conf ]; then
+        if ! grep -q "nameserver" /etc/resolv.conf || [ ! -s /etc/resolv.conf ]; then
+            log_warning "DNS configuration issue detected"
+            echo -e "nameserver 8.8.8.8\nnameserver 8.8.4.4" | sudo tee /etc/resolv.conf &>/dev/null
+            log_fix "Fixed DNS configuration"
         fi
-
-        if [ "$config_changed" = true ]; then
-            log_detail "Restarting systemd-journald..."
-            sudo systemctl restart systemd-journald
-            R_HEALTH["journal_config"]="${CHECKMARK} ${EMP_GREY_TEXT}Journal Config: Set to max 500M and restarted.${RESET}"
-        else
-            R_HEALTH["journal_config"]="${INFO} ${EMP_GREY_TEXT}Journal Config: Already optimally configured.${RESET}"
-        fi
-    else
-        R_HEALTH["journal_config"]="${WARN} ${EMP_GREY_TEXT}Journal Config: /etc/systemd/journald.conf not found.${RESET}"
     fi
 
-    if command_exists journalctl; then
-        log_detail "Verifying journal integrity..."
-        journal_health_output=$(sudo journalctl --verify 2>&1)
-        echo "$journal_health_output" | head -3 | sed 's/^/      /'
-
-        if echo "$journal_health_output" | grep -qiE "PASS|Reference hash not found|Journal file .* is truncated|doesn't match"; then
-            if echo "$journal_health_output" | grep -qiE "is truncated|problem|doesn't match|FAIL"; then
-                R_HEALTH["journal_status"]="${WARN} ${EMP_GREY_TEXT}Journal Health: Verified with issues (see details).${RESET}"
-                R_HEALTH["journal_details"]="${EMP_GREY_TEXT}${journal_health_output}${RESET}"
-            else
-                R_HEALTH["journal_status"]="${CHECKMARK} ${EMP_GREY_TEXT}Journal Health: Verified, OK${RESET}"
-            fi
-        elif echo "$journal_health_output" | grep -qi "FAIL"; then
-            R_HEALTH["journal_status"]="${CROSS} ${EMP_GREY_TEXT}Journal Health: Verification FAILED. Journal may be corrupted.${RESET}"
-            R_HEALTH["journal_details"]="${EMP_GREY_TEXT}${journal_health_output}${RESET}"
+    # Check firewall status
+    if command_exists ufw; then
+        if ! sudo ufw status | grep -q "Status: active"; then
+            log_warning "Firewall (UFW) is inactive"
+            ((ISSUES_FOUND++))
         else
-            R_HEALTH["journal_status"]="${INFO} ${EMP_GREY_TEXT}Journal Health: Status inconclusive.${RESET}"
-            R_HEALTH["journal_details"]="${EMP_GREY_TEXT}${journal_health_output}${RESET}"
+            log_success "Firewall active"
         fi
-    else
-        R_HEALTH["journal_status"]="${WARN} ${EMP_GREY_TEXT}Journal Health: Not checked (journalctl not found)${RESET}"
     fi
 }
 
-# --- Final Report Generation ---
+# --- Generate Report ---
 generate_final_report() {
-    local divider="${EMP_DARK_GREY_DIVIDER}------------------------------------------------------------${RESET}"
-    local main_title_block="${EMP_WHITE_TITLE}${BOLD}"
-    main_title_block+="============================================================${RESET}\n"
-    main_title_block+="${EMP_WHITE_TITLE}${BOLD}                      SYSTEM MAINTENANCE REPORT                     ${RESET}\n"
-    main_title_block+="${EMP_WHITE_TITLE}${BOLD}============================================================${RESET}"
+    print_header
 
-    echo -e "\n\n${main_title_block}"
-    echo -e "${EMP_GREY_TEXT}Date Generated: $(date)${RESET}"
-    echo -e "${EMP_GREY_TEXT}System Hostname: $(hostname)${RESET}"
-    echo -e "$divider"
+    echo -e "${NEON_CYAN}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${NEON_CYAN}║${TEXT_BRIGHT}                        MAINTENANCE REPORT SUMMARY                         ${NEON_CYAN}║${RESET}"
+    echo -e "${NEON_CYAN}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
 
-    print_section_header() {
-        local section_num_roman
-        case "$1" in
-            1) section_num_roman="I";;
-            2) section_num_roman="II";;
-            3) section_num_roman="III";;
-            4) section_num_roman="IV";;
-            5) section_num_roman="V";;
-            6) section_num_roman="VI";;
-            7) section_num_roman="VII";;
-            *) section_num_roman="$1";;
-        esac
-        echo -e "  ${EMP_WHITE_TEXT}[${EMP_BLUE_HEADER}SECTION ${section_num_roman}${EMP_WHITE_TEXT}] :: ${EMP_WHITE_TEXT}${BOLD}${2}${RESET}"
-        echo -e "  ${EMP_DARK_GREY_DIVIDER}────────────────────────────────────────────────────────────${RESET}"
-    }
+    echo -e "  ${ICON_INFO} ${TEXT_BRIGHT}System:${RESET}     $(hostname)"
+    echo -e "  ${ICON_INFO} ${TEXT_BRIGHT}Date:${RESET}       $(date '+%Y-%m-%d %H:%M:%S')"
+    echo -e "  ${ICON_INFO} ${TEXT_BRIGHT}Kernel:${RESET}     $(uname -r)"
+    echo -e "  ${ICON_INFO} ${TEXT_BRIGHT}Uptime:${RESET}     $(uptime -p)"
+    print_divider
 
-    print_kv() {
-        local label="$1"
-        local value="$2"
-        local pad_length=32
-        printf "  ${EMP_GREY_TEXT}%-${pad_length}s ${RESET}%s\n" "${label}:" "$value"
-    }
+    echo ""
+    echo -e "  ${NEON_GREEN}${BOLD}✓ ACTIONS COMPLETED${RESET}"
+    echo -e "    ${ICON_CLEAN} Fixes Applied:      ${NEON_GREEN}${BOLD}$FIXES_APPLIED${RESET}"
+    echo -e "    ${ICON_CLEAN} Space Freed:        ${NEON_GREEN}${BOLD}$(bytes_to_human $BYTES_FREED)${RESET}"
+    echo -e "    ${ICON_WARNING} Issues Found:       ${WARNING}${BOLD}$ISSUES_FOUND${RESET}"
+    echo ""
 
-    print_kv_status() {
-        local label="$1"
-        local status_value="$2"
-        local pad_length=32
-        printf "  ${EMP_GREY_TEXT}%-${pad_length}s %b\n" "${label}:" "$status_value"
-    }
-
-    print_section_header "1" "APT PACKAGE MAINTENANCE"
-    print_kv "Initial APT Version" "${R_APT["version_initial"]}"
-    print_kv "Final APT Version" "${R_APT["version_final"]}"
-    print_kv_status "APT Version Change" "${R_APT["version_change"]}"
-    print_kv_status "Repository Update" "${R_APT["update_status"]}"
-    print_kv_status "System Packages Upgrade" "${R_APT["full_upgrade_status"]}"
-    print_kv_status "Package Autoremoval" "${R_APT["autoremove_status"]:-"${INFO} ${EMP_GREY_TEXT}Not run or no info.${RESET}"}"
-    if [ -n "${R_APT["autoremove_details"]}" ] && [[ "${R_APT["autoremove_status"]}" == *"${CHECKMARK}"* ]]; then
-        echo -e "    ${EMP_GREY_TEXT}Autoremove Details:\n$(echo "${R_APT["autoremove_details"]}" | grep -Ev "0 upgraded, 0 newly installed, 0 to remove" | sed "s|^|      ${EMP_GREY_TEXT}|")${RESET}"
+    if [ "$ISSUES_FOUND" -gt 0 ]; then
+        echo -e "  ${WARNING}${BOLD}⚠ ATTENTION REQUIRED${RESET}"
+        echo -e "    ${TEXT_DIM}Some issues require manual intervention${RESET}"
+        echo ""
     fi
-    print_kv_status "APT Cache Cleaned" "${R_APT["cache_clean"]}"
-    print_kv "Held Packages" "${R_APT["held_packages"]}"
-    echo -e "  ${EMP_GREY_TEXT}Upgradable (Post-Upgrade):${R_APT["upgradable_list"]}"
-    echo -e "$divider"
 
-    print_section_header "2" "SNAP PACKAGE MAINTENANCE"
-    print_kv_status "Snap Service" "${R_SNAP["installed"]}"
-    [ "${R_SNAP["installed"]}" != "${INFO} ${EMP_GREY_TEXT}Snap Service: Not installed${RESET}" ] && print_kv_status "Snap Packages Update" "${R_SNAP["updates"]}"
-    echo -e "$divider"
-
-    print_section_header "3" "FLATPAK PACKAGE MAINTENANCE"
-    print_kv_status "Flatpak Service" "${R_FLATPAK["installed"]}"
-    [ "${R_FLATPAK["installed"]}" != "${INFO} ${EMP_GREY_TEXT}Flatpak Service: Not installed${RESET}" ] && print_kv_status "Flatpak Applications Update" "${R_FLATPAK["updates"]}"
-    echo -e "$divider"
-
-    print_section_header "4" "DRIVE MAINTENANCE (TRIM/DEFRAG)"
-    echo -e "  ${EMP_GREY_TEXT}Status:${RESET}"
-    echo -e "${R_DRIVES["summary"]}"
-    echo -e "$divider"
-
-    print_section_header "5" "HARDWARE CHECKS & FIRMWARE"
-    echo -e "  ${EMP_GREY_TEXT}${R_HARDWARE["utils_log_header"]}${RESET}"
-    echo -e "${R_HARDWARE["utils_installation_report"]}"
-    echo -e "  ${EMP_GREY_TEXT}Firmware Management (fwupdmgr):"
-    print_kv_status "Service Status" "${R_HARDWARE["fwupdmgr_status"]}"
-    if [[ "${R_HARDWARE["fwupdmgr_status"]}" == *"${CHECKMARK}"* ]]; then
-        print_kv_status "Metadata Refresh" "${R_HARDWARE["fw_refresh"]}"
-        print_kv_status "Available Firmware" "${R_HARDWARE["fw_updates_available"]}"
-        [ -n "${R_HARDWARE["fw_updates_applied"]}" ] && print_kv_status "Firmware Application" "${R_HARDWARE["fw_updates_applied"]}"
-        [ -n "${R_HARDWARE["fw_capsule_warning"]}" ] && echo -e "    ${R_HARDWARE["fw_capsule_warning"]}"
-    fi
-    print_kv "${R_HARDWARE["cpu_tool_label"]}" "${R_HARDWARE["cpu_info_tool"]}"
-    print_kv "${R_HARDWARE["sensor_tool_label"]}" "${R_HARDWARE["sensors_tool"]}"
-    echo -e "  ${EMP_GREY_TEXT}${R_HARDWARE["smart_label"]}${RESET}"
-    echo -e "${R_HARDWARE["smart_status"]}"
-    echo -e "$divider"
-
-    print_section_header "6" "SYSTEM HEALTH & OPTIMIZATIONS"
-    print_kv_status "System Cache Clear" "${R_OPTIMIZATIONS["cache_cleared"]}"
-    print_kv_status "Orphaned Configs Purged" "${R_OPTIMIZATIONS["orphaned_configs_status"]}"
-    print_kv_status "Journal Health" "${R_HEALTH["journal_status"]:-"${INFO} ${EMP_GREY_TEXT}Not checked${RESET}"}"
-    if [ -n "${R_HEALTH["journal_details"]}" ] && [[ "${R_HEALTH["journal_status"]}" == *"${WARN}"* || "${R_HEALTH["journal_status"]}" == *"${CROSS}"* ]] ; then
-        echo -e "    ${EMP_GREY_TEXT}Details (first few lines):\n$(echo "${R_HEALTH["journal_details"]}" | head -n 3 | sed "s|^|      ${EMP_GREY_TEXT}|")${RESET}"
-    fi
-    print_kv_status "Journal Max Size Config" "${R_HEALTH["journal_config"]}"
-    print_kv_status "Swappiness" "${R_OPTIMIZATIONS["swappiness"]}"
-    [ -n "${R_OPTIMIZATIONS["swappiness_guidance"]}" ] && echo -e "${R_OPTIMIZATIONS["swappiness_guidance"]}"
-    print_kv_status "CPU Governor" "${R_OPTIMIZATIONS["cpu_governor"]}"
-    [ -n "${R_OPTIMIZATIONS["cpu_governor_suggestion"]}" ] && echo -e "${R_OPTIMIZATIONS["cpu_governor_suggestion"]}"
-    print_kv_status "Preload Service" "${R_OPTIMIZATIONS["preload_status"]}"
-    print_kv "Log Usage (/var/log)" "${R_OPTIMIZATIONS["log_usage"]}"
-    echo -e "  ${EMP_GREY_TEXT}Slowest Startup Services (Top 3):${R_OPTIMIZATIONS["slow_services"]}${RESET}"
-    echo -e "$divider"
+    print_divider
+    echo -e "  ${SUCCESS}${BOLD}✓ SYSTEM MAINTENANCE COMPLETE${RESET}"
+    echo ""
 
     R_SYSTEM["end_time"]=$(date +"%Y-%m-%d %H:%M:%S")
-    echo -e "${EMP_GREY_TEXT}Report End Time: ${R_SYSTEM["end_time"]}${RESET}"
-    echo -e "${EMP_WHITE_TITLE}${BOLD}============================================================${RESET}"
-    echo -e "\n${EMP_GREEN_SUCCESS}${BOLD}SYSTEM MAINTENANCE COMPLETE.${RESET}"
 }
 
-# --- ask_and_apply_fixes() function (with --skip logic) ---
-ask_and_apply_fixes() {
+# --- Interactive Fixes ---
+apply_interactive_fixes() {
     if [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-        echo -e "\n${PROG_ACCENT_BLUE}${BOLD}--- Optional Post-Scan Actions (Skipped due to --skip flag) ---${RESET}"
-    else
-        echo -e "\n${PROG_ACCENT_BLUE}${BOLD}--- Optional Post-Scan Actions ---${RESET}"
+        echo -e "${INFO} Skipping interactive fixes (--skip mode)${RESET}"
+        return
     fi
 
-    local fixes_applied_log=""
-    local choice
-    local prompt_message
+    echo ""
+    echo -e "${NEON_PURPLE}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${NEON_PURPLE}║${TEXT_BRIGHT}                     OPTIONAL SYSTEM IMPROVEMENTS                          ${NEON_PURPLE}║${RESET}"
+    echo -e "${NEON_PURPLE}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
 
-    if [ "${R_FLATPAK["installed"]}" = "${INFO} ${EMP_GREY_TEXT}Flatpak Service: Not installed${RESET}" ]; then
-        if [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-            fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Flatpak installation: Skipped (non-interactive mode).${RESET}\n"
-        else
-            read -r -p $'\nFlatpak service is not installed. Install Flatpak and add Flathub remote? (y/N): ' choice
-            if [[ "$choice" =~ ^[Yy]$ ]]; then
-                printf "${PROG_TEXT_COLOR}Attempting to install Flatpak...\n${RESET}"
-                if sudo apt update -y && sudo apt install -y flatpak; then
-                    fixes_applied_log+="  ${CHECKMARK} ${EMP_GREY_TEXT}Flatpak installed successfully.${RESET}\n"
-                    printf "${PROG_TEXT_COLOR}Attempting to add Flathub remote...\n${RESET}"
-                    if sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo; then
-                        fixes_applied_log+="  ${CHECKMARK} ${EMP_GREY_TEXT}Flathub remote added successfully.${RESET}\n"
-                    else
-                        fixes_applied_log+="  ${CROSS} ${EMP_GREY_TEXT}Failed to add Flathub remote.${RESET}\n"
-                    fi
-                else
-                    fixes_applied_log+="  ${CROSS} ${EMP_GREY_TEXT}Failed to install Flatpak.${RESET}\n"
-                fi
-            else
-                fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Flatpak installation: Skipped by user.${RESET}\n"
-            fi
+    # Flatpak installation
+    if ! command_exists flatpak; then
+        read -r -p "  Install Flatpak for additional applications? [y/N]: " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            sudo apt install -y flatpak &>/dev/null
+            sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo &>/dev/null
+            echo -e "  ${ICON_CHECK} ${SUCCESS}Flatpak installed${RESET}"
         fi
     fi
 
-    local current_swappiness_val="${R_OPTIMIZATIONS["swappiness_current_value"]}"
-    if [ "$current_swappiness_val" != "unknown" ] && [ "$current_swappiness_val" -gt 20 ]; then
-        if [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-            fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Swappiness adjustment: Skipped (non-interactive mode).${RESET}\n"
-        else
-            read -r -p $'\nSystem swappiness is '"$current_swappiness_val"'. Adjust to 10 (recommended for desktop performance)? (y/N): ' choice
-            if [[ "$choice" =~ ^[Yy]$ ]]; then
-                printf "${PROG_TEXT_COLOR}Setting swappiness to 10...\n${RESET}"
-                if sudo sysctl vm.swappiness=10; then
-                    fixes_applied_log+="  ${CHECKMARK} ${EMP_GREY_TEXT}Swappiness temporarily set to 10.${RESET}\n"
-                    local swappiness_conf_file="/etc/sysctl.d/99-custom-swappiness.conf"
-                    echo "vm.swappiness=10" | sudo tee "$swappiness_conf_file" > /dev/null
-                    if sudo sysctl -p "$swappiness_conf_file" &>/dev/null || sudo sysctl -p &>/dev/null; then
-                        fixes_applied_log+="  ${CHECKMARK} ${EMP_GREY_TEXT}Swappiness persistently set to 10.${RESET}\n"
-                    else
-                        fixes_applied_log+="  ${WARN} ${EMP_GREY_TEXT}Swappiness set in $swappiness_conf_file, but 'sysctl -p' had issues. Reboot should apply.${RESET}\n"
-                    fi
-                else
-                    fixes_applied_log+="  ${CROSS} ${EMP_GREY_TEXT}Failed to set swappiness via sysctl.${RESET}\n"
-                fi
-            else
-                fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Swappiness adjustment: Skipped by user.${RESET}\n"
-            fi
+    # Enable firewall if not active
+    if command_exists ufw && ! sudo ufw status | grep -q "Status: active"; then
+        read -r -p "  Enable firewall (UFW) for better security? [y/N]: " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            sudo ufw default deny incoming &>/dev/null
+            sudo ufw default allow outgoing &>/dev/null
+            sudo ufw limit ssh &>/dev/null
+            yes | sudo ufw enable &>/dev/null
+            echo -e "  ${ICON_CHECK} ${SUCCESS}Firewall enabled${RESET}"
         fi
     fi
-
-    if command_exists ufw; then
-        ufw_status_output=$(sudo ufw status 2>/dev/null)
-        if echo "$ufw_status_output" | grep -qi "Status: active"; then
-            fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Firewall (UFW): Already active.${RESET}\n"
-        else
-            if [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-                fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}UFW enablement: Skipped (non-interactive mode).${RESET}\n"
-            else
-                read -r -p $'\nFirewall (UFW) is installed but seems inactive. Enable basic protection? (y/N): ' choice
-                if [[ "$choice" =~ ^[Yy]$ ]]; then
-                    printf "${PROG_TEXT_COLOR}Enabling UFW with default policies...\n${RESET}"
-                    sudo ufw default deny incoming >/dev/null
-                    sudo ufw default allow outgoing >/dev/null
-                    sudo ufw limit ssh >/dev/null
-                    if yes | sudo ufw enable &>/dev/null; then
-                        fixes_applied_log+="  ${CHECKMARK} ${EMP_GREY_TEXT}Firewall (UFW) enabled with basic policies.${RESET}\n"
-                    else
-                        fixes_applied_log+="  ${CROSS} ${EMP_GREY_TEXT}Failed to enable UFW. Manual check required.${RESET}\n"
-                    fi
-                else
-                    fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}UFW enablement: Skipped by user.${RESET}\n"
-                fi
-            fi
-        fi
-    fi
-
-    if dpkg-query -W -f='${Package}\n' 'linux-image-[0-9]*.[0-9]*.[0-9]*-[0-9]*-generic' 'linux-image-[0-9]*.[0-9]*.[0-9]*-[0-9]*-lowlatency' &>/dev/null; then
-        current_kernel=$(uname -r)
-        old_kernels=$(dpkg-query -W -f='${Package}\t${Status}\n' 'linux-image-[0-9]*' 'linux-headers-[0-9]*' 2>/dev/null | grep "[[:space:]]install ok installed$" | awk '{print $1}' | grep -vE "^linux-(image|headers)-${current_kernel}$|\bgeneric\b|\bcommon\b|tools-" | sort -u)
-        if [ -n "$old_kernels" ]; then
-            fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Old Kernel Packages Found (candidates for removal):${RESET}\n"
-            while IFS= read -r kernel_pkg; do
-                fixes_applied_log+="    ${EMP_GREY_TEXT}- $kernel_pkg${RESET}\n"
-            done <<< "$old_kernels"
-            fixes_applied_log+="    ${EMP_GREY_TEXT}Consider running 'sudo apt autoremove --purge' to remove them if no longer needed.${RESET}\n"
-        else
-            fixes_applied_log+="  ${INFO} ${EMP_GREY_TEXT}Old Kernel Packages: None found (beyond current or metapackages).${RESET}\n"
-        fi
-    fi
-
-    if [ -n "$fixes_applied_log" ]; then
-        echo -e "\n${BOLD}Summary of Post-Scan Actions:${RESET}\n${fixes_applied_log}"
-    elif [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-        echo -e "\nAll applicable optional post-scan actions were automatically skipped."
-    else
-        echo -e "\nNo interactive post-scan actions were performed or applicable."
-    fi
-    echo -e "${PROG_ACCENT_BLUE}${BOLD}---------------------------------${RESET}"
 }
 
-# --- Main Script Execution ---
+# --- Main Execution ---
 main() {
-    # Argument parsing for --skip
-    SKIP_INTERACTIVE_ACTIONS=false
-    if [[ "$1" == "--skip" || "$1" == "-skip" ]]; then
-        SKIP_INTERACTIVE_ACTIONS=true
-    fi
+    # Parse arguments
+    for arg in "$@"; do
+        case "$arg" in
+            --skip|-s)
+                SKIP_INTERACTIVE_ACTIONS=true
+                ;;
+            --no-fix)
+                AUTOFIX_ENABLED=false
+                ;;
+        esac
+    done
 
     trap cleanup_on_exit EXIT
     trap interrupted_exit SIGINT SIGTERM
-    SCRIPT_PROGRESS_PERCENT=0
-    CURRENT_TASK_MESSAGE=""
-    spinner_index=0
+    tput civis 2>/dev/null || true
+
+    print_header
 
     if [ "$SKIP_INTERACTIVE_ACTIONS" = true ]; then
-        echo -e "${PROG_ACCENT_BLUE}${BOLD}Non-interactive mode (--skip). Optional post-scan actions will be skipped.${RESET}"
+        echo -e "${INFO} Running in non-interactive mode${RESET}"
+        echo ""
     fi
 
-    CURRENT_TASK_MESSAGE="Initializing System Scan"
-    display_progress "$SCRIPT_PROGRESS_PERCENT" "$CURRENT_TASK_MESSAGE"
+    CURRENT_TASK_MESSAGE="Initializing system diagnostics"
+    display_progress 0 "$CURRENT_TASK_MESSAGE"
     section_initial_setup
 
     animate_progress_bar 5
-    CURRENT_TASK_MESSAGE="Updating APT Packages"
+    CURRENT_TASK_MESSAGE="APT package maintenance & repairs"
     display_progress 5 "$CURRENT_TASK_MESSAGE"
-    section_apt_initial_update
+    section_apt_maintenance
 
     animate_progress_bar 15
-    CURRENT_TASK_MESSAGE="Analyzing APT Package Details"
+    CURRENT_TASK_MESSAGE="Snap package management"
     display_progress 15 "$CURRENT_TASK_MESSAGE"
-    section_apt_detailed_analysis
-
-    animate_progress_bar 20
-    CURRENT_TASK_MESSAGE="Checking System Journal Health"
-    display_progress 20 "$CURRENT_TASK_MESSAGE"
-    section_journal_health_and_config
-
-    animate_progress_bar 25
-    CURRENT_TASK_MESSAGE="Checking Snap Packages"
-    display_progress 25 "$CURRENT_TASK_MESSAGE"
     section_snap_maintenance
 
-    animate_progress_bar 35
-    CURRENT_TASK_MESSAGE="Checking Flatpak Packages"
-    display_progress 35 "$CURRENT_TASK_MESSAGE"
+    animate_progress_bar 20
+    CURRENT_TASK_MESSAGE="Flatpak application management"
+    display_progress 20 "$CURRENT_TASK_MESSAGE"
     section_flatpak_maintenance
 
-    animate_progress_bar 45
-    CURRENT_TASK_MESSAGE="Verifying System Utilities"
-    display_progress 45 "$CURRENT_TASK_MESSAGE"
+    animate_progress_bar 30
+    CURRENT_TASK_MESSAGE="Installing essential utilities"
+    display_progress 30 "$CURRENT_TASK_MESSAGE"
     section_hardware_utility_installation
 
-    animate_progress_bar 55
-    CURRENT_TASK_MESSAGE="Checking Firmware Updates"
-    display_progress 55 "$CURRENT_TASK_MESSAGE"
-    section_firmware_update
+    animate_progress_bar 40
+    CURRENT_TASK_MESSAGE="Deep system cleanup & cache removal"
+    display_progress 40 "$CURRENT_TASK_MESSAGE"
+    section_deep_cleanup
 
-    animate_progress_bar 65
-    CURRENT_TASK_MESSAGE="Performing Drive Maintenance"
-    display_progress 65 "$CURRENT_TASK_MESSAGE"
+    animate_progress_bar 55
+    CURRENT_TASK_MESSAGE="Drive maintenance & optimization"
+    display_progress 55 "$CURRENT_TASK_MESSAGE"
     section_drive_maintenance
 
-    animate_progress_bar 75
-    CURRENT_TASK_MESSAGE="Running Hardware Status Checks"
-    display_progress 75 "$CURRENT_TASK_MESSAGE"
-    section_hardware_status_checks
+    animate_progress_bar 70
+    CURRENT_TASK_MESSAGE="Performance optimization"
+    display_progress 70 "$CURRENT_TASK_MESSAGE"
+    section_performance_optimization
 
     animate_progress_bar 85
-    CURRENT_TASK_MESSAGE="Applying System Optimizations"
+    CURRENT_TASK_MESSAGE="Hardware health & firmware checks"
     display_progress 85 "$CURRENT_TASK_MESSAGE"
-    section_additional_optimizations
+    section_hardware_checks
+
+    animate_progress_bar 93
+    CURRENT_TASK_MESSAGE="Network configuration"
+    display_progress 93 "$CURRENT_TASK_MESSAGE"
+    section_network_optimization
 
     animate_progress_bar 100
-    CURRENT_TASK_MESSAGE="Generating Final Report"
+    CURRENT_TASK_MESSAGE="Generating report"
     display_progress 100 "$CURRENT_TASK_MESSAGE"
-    generate_final_report
+    sleep 0.5
 
-    ask_and_apply_fixes
+    generate_final_report
+    apply_interactive_fixes
+
+    tput cnorm 2>/dev/null || true
     SCRIPT_COMPLETED_SUCCESSFULLY=true
     exit 0
 }
 
-main "$@" # Pass all command-line arguments to main
+main "$@"
